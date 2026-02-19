@@ -22,10 +22,8 @@ final class GuardController: ObservableObject {
     private let clickUpClient: ClickUpAPIClient
     private let tokenStore: SecureTokenStore
     private let reminderEngine: ReminderEngine
-    private var notificationCenter: UNUserNotificationCenter? {
-        guard Self.isRunningAsAppBundle else { return nil }
-        return UNUserNotificationCenter.current()
-    }
+    private let notificationCenter = UNUserNotificationCenter.current()
+    private let notificationPresenter = ForegroundNotificationPresenter()
 
     private var schedulerTask: Task<Void, Never>?
     private var appActivationObserver: NSObjectProtocol?
@@ -50,6 +48,7 @@ final class GuardController: ObservableObject {
 
     func start() {
         startFrontmostAppObserver()
+        notificationCenter.delegate = notificationPresenter
         Task { await requestNotificationAuthorizationIfNeeded() }
         startScheduler()
     }
@@ -231,7 +230,6 @@ final class GuardController: ObservableObject {
     }
 
     private func requestNotificationAuthorizationIfNeeded() async {
-        guard let notificationCenter else { return }
         let settings = await notificationCenter.notificationSettings()
         if settings.authorizationStatus == .notDetermined {
             _ = try? await notificationCenter.requestAuthorization(options: [.alert, .sound])
@@ -245,8 +243,9 @@ final class GuardController: ObservableObject {
     }
 
     private func sendNotification(title: String, body: String) async {
-        guard let notificationCenter else {
-            sendAppleScriptNotification(title: title, body: body)
+        let settings = await notificationCenter.notificationSettings()
+        if settings.authorizationStatus == .denied {
+            lastErrorMessage = "Notifications are disabled for ClickUpTimerGuard in macOS System Settings."
             return
         }
 
@@ -260,28 +259,11 @@ final class GuardController: ObservableObject {
             content: content,
             trigger: nil
         )
-        try? await notificationCenter.add(request)
-    }
-
-    private func sendAppleScriptNotification(title: String, body: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = [
-            "-e",
-            "display notification \(appleScriptStringLiteral(body)) with title \(appleScriptStringLiteral(title))"
-        ]
-        try? process.run()
-    }
-
-    private func appleScriptStringLiteral(_ value: String) -> String {
-        let escaped = value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        return "\"\(escaped)\""
-    }
-
-    private static var isRunningAsAppBundle: Bool {
-        Bundle.main.bundleURL.pathExtension.lowercased() == "app"
+        do {
+            try await notificationCenter.add(request)
+        } catch {
+            lastErrorMessage = "Failed to schedule notification: \(error.localizedDescription)"
+        }
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -346,5 +328,14 @@ final class GuardController: ObservableObject {
         }
         let minutes = max(1, remaining / 60)
         return "\(minutes)m"
+    }
+}
+
+private final class ForegroundNotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound, .list]
     }
 }
