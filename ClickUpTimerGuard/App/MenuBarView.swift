@@ -65,10 +65,6 @@ struct MenuBarView: View {
                 controller.addCurrentFrontmostAppToWorkContext()
             }
 
-            Button("Send Test Notification") {
-                controller.sendTestNotification()
-            }
-
             Button("Open Settings") {
                 openWindow(id: "settings")
                 NSApp.activate(ignoringOtherApps: true)

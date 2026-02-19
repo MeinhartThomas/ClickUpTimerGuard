@@ -13,7 +13,7 @@ struct ClickUpTimerGuardApp: App {
     @StateObject private var controller = GuardController()
 
     var body: some Scene {
-        MenuBarExtra("Timer Guard", systemImage: "timer") {
+        MenuBarExtra("Timer Guard", image: "MenuBarIcon") {
             MenuBarView(controller: controller)
                 .onAppear {
                     controller.start()
@@ -25,8 +25,8 @@ struct ClickUpTimerGuardApp: App {
 
         Window("Settings", id: "settings") {
             SettingsView(controller: controller, settings: controller.settings)
-                .frame(minWidth: 600, minHeight: 600)
+                .frame(minWidth: 700, minHeight: 500)
         }
-        .defaultSize(width: 600, height: 650)
+        .defaultSize(width: 600, height: 500)
     }
 }

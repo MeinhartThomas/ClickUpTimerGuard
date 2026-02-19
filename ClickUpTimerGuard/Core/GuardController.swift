@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import UserNotifications
 import Combine
+import ServiceManagement
 
 @MainActor
 final class GuardController: ObservableObject {
@@ -14,6 +15,8 @@ final class GuardController: ObservableObject {
     @Published var clearSnoozeButtonTitle = "Clear Snooze"
     @Published var identityDescription = "Not resolved"
     @Published var tokenInput = ""
+    @Published var startAtLoginEnabled = false
+    @Published var startAtLoginErrorMessage: String?
 
     let settings: AppSettings
 
@@ -27,6 +30,7 @@ final class GuardController: ObservableObject {
 
     private var schedulerTask: Task<Void, Never>?
     private var appActivationObserver: NSObjectProtocol?
+    private var hasShownNotificationsDisabledPrompt = false
 
     init(
         settings: AppSettings = AppSettings(),
@@ -44,6 +48,7 @@ final class GuardController: ObservableObject {
         self.reminderEngine = reminderEngine
 
         tokenInput = (try? tokenStore.loadToken()) ?? ""
+        startAtLoginEnabled = Self.isStartAtLoginEnabledInSystem()
     }
 
     func start() {
@@ -73,16 +78,6 @@ final class GuardController: ObservableObject {
 
     func checkNow() {
         Task { await runCheck() }
-    }
-
-    func sendTestNotification() {
-        Task {
-            await sendNotification(
-                title: "ClickUp Timer Guard Test",
-                body: "This is a test notification from the menu bar dropdown."
-            )
-            lastCheckDescription = "Sent test notification at \(Self.dateFormatter.string(from: Date()))"
-        }
     }
 
     func snooze(minutes: Int) {
@@ -154,6 +149,31 @@ final class GuardController: ObservableObject {
 
     func loadIdentity() {
         Task { await loadIdentityNow() }
+    }
+
+    func refreshStartAtLoginStatus() {
+        startAtLoginEnabled = Self.isStartAtLoginEnabledInSystem()
+    }
+
+    func setStartAtLoginEnabled(_ enabled: Bool) {
+        guard #available(macOS 13.0, *) else {
+            startAtLoginEnabled = false
+            startAtLoginErrorMessage = "Start at login requires macOS 13 or newer."
+            return
+        }
+
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            startAtLoginEnabled = (SMAppService.mainApp.status == .enabled)
+            startAtLoginErrorMessage = nil
+        } catch {
+            startAtLoginEnabled = (SMAppService.mainApp.status == .enabled)
+            startAtLoginErrorMessage = "Failed to update startup behavior: \(error.localizedDescription)"
+        }
     }
 
     private func runCheck() async {
@@ -230,9 +250,15 @@ final class GuardController: ObservableObject {
     }
 
     private func requestNotificationAuthorizationIfNeeded() async {
-        let settings = await notificationCenter.notificationSettings()
-        if settings.authorizationStatus == .notDetermined {
+        let initialSettings = await notificationCenter.notificationSettings()
+        if initialSettings.authorizationStatus == .notDetermined {
             _ = try? await notificationCenter.requestAuthorization(options: [.alert, .sound])
+        }
+
+        let finalSettings = await notificationCenter.notificationSettings()
+        if finalSettings.authorizationStatus == .denied {
+            lastErrorMessage = "Notifications are disabled for ClickUpTimerGuard in macOS System Settings."
+            promptToEnableNotificationsIfNeeded()
         }
     }
 
@@ -263,6 +289,38 @@ final class GuardController: ObservableObject {
             try await notificationCenter.add(request)
         } catch {
             lastErrorMessage = "Failed to schedule notification: \(error.localizedDescription)"
+        }
+    }
+
+    private func promptToEnableNotificationsIfNeeded() {
+        guard !hasShownNotificationsDisabledPrompt else { return }
+        hasShownNotificationsDisabledPrompt = true
+
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Enable Notifications"
+        alert.informativeText = "ClickUpTimerGuard needs notifications enabled to remind you when a timer is not running."
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Not Now")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            openNotificationSettings()
+        }
+    }
+
+    private func openNotificationSettings() {
+        let urls = [
+            "x-apple.systempreferences:com.apple.Notifications-Settings.extension",
+            "x-apple.systempreferences:com.apple.preference.notifications"
+        ]
+
+        for rawURL in urls {
+            guard let url = URL(string: rawURL) else { continue }
+            if NSWorkspace.shared.open(url) {
+                return
+            }
         }
     }
 
@@ -328,6 +386,11 @@ final class GuardController: ObservableObject {
         }
         let minutes = max(1, remaining / 60)
         return "\(minutes)m"
+    }
+
+    private static func isStartAtLoginEnabledInSystem() -> Bool {
+        guard #available(macOS 13.0, *) else { return false }
+        return SMAppService.mainApp.status == .enabled
     }
 }
 

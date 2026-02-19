@@ -16,6 +16,8 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     switch selectedSection ?? .clickUpAPI {
+                    case .general:
+                        generalSection
                     case .clickUpAPI:
                         clickUpAPISection
                     case .detection:
@@ -30,6 +32,32 @@ struct SettingsView: View {
             .navigationTitle((selectedSection ?? .clickUpAPI).title)
         }
         .frame(minWidth: 760, minHeight: 720)
+    }
+
+    private var generalSection: some View {
+        Group {
+            row("Startup") {
+                Toggle("Start app on startup", isOn: Binding(
+                    get: { controller.startAtLoginEnabled },
+                    set: { controller.setStartAtLoginEnabled($0) }
+                ))
+                .toggleStyle(.checkbox)
+            }
+            Text("Launches ClickUpTimerGuard automatically when you log in.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 192)
+
+            if let error = controller.startAtLoginErrorMessage, !error.isEmpty {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .padding(.leading, 192)
+            }
+        }
+        .onAppear {
+            controller.refreshStartAtLoginStatus()
+        }
     }
 
     private var clickUpAPISection: some View {
@@ -118,6 +146,7 @@ struct SettingsView: View {
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
+    case general
     case clickUpAPI
     case detection
     case activeApps
@@ -126,6 +155,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .general:
+            return "General"
         case .clickUpAPI:
             return "ClickUp API"
         case .detection:
@@ -137,6 +168,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .general:
+            return "gearshape"
         case .clickUpAPI:
             return "link"
         case .detection:
