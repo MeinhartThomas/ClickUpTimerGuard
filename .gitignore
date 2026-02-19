@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+
+# Xcode build artifacts
+build/
+DerivedData/
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Swift Package Manager
+.build/
+Packages/
+
+# Xcode user-specific files
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+xcuserdata/
+
+# Xcode helper/output files
+*.hmap
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.swp
+*.swo
+*.tmp
+*.orig
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Local environment and secrets
+.env
+.env.*
+*.local
