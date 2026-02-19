@@ -56,6 +56,11 @@ struct SettingsView: View {
                 TextField("", text: $settings.clickUpUserID)
                     .textFieldStyle(.roundedBorder)
             }
+            row("") {
+                Button("Load Identity") {
+                    controller.loadIdentity()
+                }
+            }
             row("Resolved Identity") {
                 Text(controller.identityDescription)
                     .foregroundStyle(.secondary)

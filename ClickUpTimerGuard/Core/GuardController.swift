@@ -76,6 +76,16 @@ final class GuardController: ObservableObject {
         Task { await runCheck() }
     }
 
+    func sendTestNotification() {
+        Task {
+            await sendNotification(
+                title: "ClickUp Timer Guard Test",
+                body: "This is a test notification from the menu bar dropdown."
+            )
+            lastCheckDescription = "Sent test notification at \(Self.dateFormatter.string(from: Date()))"
+        }
+    }
+
     func snooze(minutes: Int) {
         let until = Date().addingTimeInterval(TimeInterval(minutes * 60))
         reminderEngine.snooze(until: until)
@@ -143,6 +153,10 @@ final class GuardController: ObservableObject {
         }
     }
 
+    func loadIdentity() {
+        Task { await loadIdentityNow() }
+    }
+
     private func runCheck() async {
         lastErrorMessage = nil
         let now = Date()
@@ -157,15 +171,7 @@ final class GuardController: ObservableObject {
                 return
             }
 
-            let identity = try await clickUpClient.resolveIdentity(
-                token: token,
-                preferredTeamID: settings.clickUpTeamID,
-                preferredUserID: settings.clickUpUserID
-            )
-
-            identityDescription = "Team \(identity.teamID) / User \(identity.userID)"
-            if settings.clickUpTeamID.isEmpty { settings.clickUpTeamID = identity.teamID }
-            if settings.clickUpUserID.isEmpty { settings.clickUpUserID = identity.userID }
+            let identity = try await resolveAndApplyIdentity(token: token)
 
             let running = try await clickUpClient.hasRunningTimer(token: token, identity: identity)
             isTimerRunning = running
@@ -192,6 +198,38 @@ final class GuardController: ObservableObject {
         }
     }
 
+    private func loadIdentityNow() async {
+        lastErrorMessage = nil
+        identityDescription = "Resolving..."
+
+        do {
+            guard let token = try tokenStore.loadToken(), !token.isEmpty else {
+                identityDescription = "Not resolved"
+                lastErrorMessage = "No ClickUp token configured"
+                return
+            }
+
+            _ = try await resolveAndApplyIdentity(token: token)
+            lastCheckDescription = "Identity loaded: \(Self.dateFormatter.string(from: Date()))"
+        } catch {
+            identityDescription = "Not resolved"
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func resolveAndApplyIdentity(token: String) async throws -> ClickUpIdentity {
+        let identity = try await clickUpClient.resolveIdentity(
+            token: token,
+            preferredTeamID: settings.clickUpTeamID,
+            preferredUserID: settings.clickUpUserID
+        )
+
+        identityDescription = "Team \(identity.teamID) / User \(identity.userID)"
+        if settings.clickUpTeamID.isEmpty { settings.clickUpTeamID = identity.teamID }
+        if settings.clickUpUserID.isEmpty { settings.clickUpUserID = identity.userID }
+        return identity
+    }
+
     private func requestNotificationAuthorizationIfNeeded() async {
         guard let notificationCenter else { return }
         let settings = await notificationCenter.notificationSettings()
@@ -203,7 +241,10 @@ final class GuardController: ObservableObject {
     private func sendMissingTimerNotification() async {
         let title = "Start your ClickUp timer"
         let body = "You are actively working, but no ClickUp timer is running."
+        await sendNotification(title: title, body: body)
+    }
 
+    private func sendNotification(title: String, body: String) async {
         guard let notificationCenter else {
             sendAppleScriptNotification(title: title, body: body)
             return

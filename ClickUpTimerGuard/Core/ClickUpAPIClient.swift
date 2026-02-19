@@ -5,6 +5,8 @@ enum ClickUpAPIError: LocalizedError {
     case badStatusCode(Int)
     case missingTeamID
     case missingUserID
+    case cannotResolveHost(String)
+    case cannotReachHost(String)
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +18,10 @@ enum ClickUpAPIError: LocalizedError {
             return "Could not resolve a ClickUp Team ID."
         case .missingUserID:
             return "Could not resolve a ClickUp User ID."
+        case let .cannotResolveHost(host):
+            return "Could not resolve \(host). Check DNS/VPN/proxy settings and try again."
+        case let .cannotReachHost(host):
+            return "Could not connect to \(host). Check your network connection and firewall."
         }
     }
 }
@@ -89,7 +95,21 @@ final class ClickUpAPIClient {
         request.setValue(token, forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            let host = url.host ?? "ClickUp API host"
+            switch error.code {
+            case .cannotFindHost, .dnsLookupFailed:
+                throw ClickUpAPIError.cannotResolveHost(host)
+            case .cannotConnectToHost:
+                throw ClickUpAPIError.cannotReachHost(host)
+            default:
+                throw error
+            }
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ClickUpAPIError.invalidResponse
         }
