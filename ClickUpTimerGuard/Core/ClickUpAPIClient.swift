@@ -40,15 +40,7 @@ final class ClickUpAPIClient {
     }
 
     func hasRunningTimer(token: String, identity: ClickUpIdentity) async throws -> Bool {
-        var components = URLComponents(
-            url: baseURL.appending(path: "team/\(identity.teamID)/time_entries/current"),
-            resolvingAgainstBaseURL: false
-        )
-        components?.queryItems = [URLQueryItem(name: "assignee", value: identity.userID)]
-
-        guard let url = components?.url else {
-            throw ClickUpAPIError.invalidResponse
-        }
+        let url = baseURL.appending(path: "team/\(identity.teamID)/time_entries/current")
 
         let data = try await performGET(url: url, token: token)
         return try decodeHasRunningTimer(from: data)
