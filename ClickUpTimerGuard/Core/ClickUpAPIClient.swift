@@ -31,6 +31,11 @@ struct ClickUpIdentity {
     let userID: String
 }
 
+struct ClickUpWorkspace: Equatable {
+    let id: String
+    let name: String
+}
+
 final class ClickUpAPIClient {
     private let session: URLSession
     private let baseURL = URL(string: "https://api.clickup.com/api/v2")!
@@ -66,6 +71,16 @@ final class ClickUpAPIClient {
         guard let teamID else { throw ClickUpAPIError.missingTeamID }
 
         return ClickUpIdentity(teamID: teamID, userID: userID)
+    }
+
+    func fetchWorkspaces(token: String) async throws -> [ClickUpWorkspace] {
+        let url = baseURL.appending(path: "team")
+        let data = try await performGET(url: url, token: token)
+        let teams = try JSONDecoder().decode(TeamsEnvelope.self, from: data)
+        return teams.teams.compactMap { team in
+            guard let id = team.id?.value else { return nil }
+            return ClickUpWorkspace(id: id, name: team.name)
+        }
     }
 
     private func fetchUserProfile(token: String) async throws -> UserEnvelope {
@@ -143,6 +158,7 @@ private struct TeamsEnvelope: Decodable {
 
 private struct TeamSummary: Decodable {
     let id: LossyString?
+    let name: String
 }
 
 private struct ClickUpUser: Decodable {

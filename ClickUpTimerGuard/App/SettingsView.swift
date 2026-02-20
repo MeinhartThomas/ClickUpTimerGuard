@@ -93,6 +93,22 @@ struct SettingsView: View {
                 Text(controller.identityDescription)
                     .foregroundStyle(.secondary)
             }
+            row("") {
+                Button("Load Workspaces") {
+                    controller.loadWorkspaces()
+                }
+            }
+            row("Available Workspaces") {
+                Text(controller.availableWorkspacesDescription)
+                    .font(.system(.body, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
+            }
         }
     }
 

@@ -61,8 +61,10 @@ struct MenuBarView: View {
                 }
             }
 
-            Button("Add Active App to Work IDs") {
-                controller.addCurrentFrontmostAppToWorkContext()
+            if shouldShowAddActiveAppButton {
+                Button("Add Active App to Work IDs") {
+                    controller.addCurrentFrontmostAppToWorkContext()
+                }
             }
 
             Button("Open Settings") {
@@ -78,6 +80,12 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 340)
+    }
+
+    private var shouldShowAddActiveAppButton: Bool {
+        let bundleID = controller.currentFrontmostBundleID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bundleID.isEmpty, bundleID != "-" else { return false }
+        return !controller.settings.workBundleIDs.contains(bundleID)
     }
 
 }

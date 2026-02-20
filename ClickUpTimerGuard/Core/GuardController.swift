@@ -14,6 +14,7 @@ final class GuardController: ObservableObject {
     @Published var isSnoozeActive = false
     @Published var clearSnoozeButtonTitle = "Clear Snooze"
     @Published var identityDescription = "Not resolved"
+    @Published var availableWorkspacesDescription = "Not loaded"
     @Published var tokenInput = ""
     @Published var startAtLoginEnabled = false
     @Published var startAtLoginErrorMessage: String?
@@ -151,6 +152,10 @@ final class GuardController: ObservableObject {
         Task { await loadIdentityNow() }
     }
 
+    func loadWorkspaces() {
+        Task { await loadWorkspacesNow() }
+    }
+
     func refreshStartAtLoginStatus() {
         startAtLoginEnabled = Self.isStartAtLoginEnabledInSystem()
     }
@@ -232,6 +237,31 @@ final class GuardController: ObservableObject {
             lastCheckDescription = "Identity loaded: \(Self.dateFormatter.string(from: Date()))"
         } catch {
             identityDescription = "Not resolved"
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func loadWorkspacesNow() async {
+        lastErrorMessage = nil
+        availableWorkspacesDescription = "Loading..."
+
+        do {
+            guard let token = try tokenStore.loadToken(), !token.isEmpty else {
+                availableWorkspacesDescription = "Not loaded"
+                lastErrorMessage = "No ClickUp token configured"
+                return
+            }
+
+            let workspaces = try await clickUpClient.fetchWorkspaces(token: token)
+            if workspaces.isEmpty {
+                availableWorkspacesDescription = "No workspaces found for this token"
+            } else {
+                availableWorkspacesDescription = workspaces
+                    .map { "\($0.name): \($0.id)" }
+                    .joined(separator: "\n")
+            }
+        } catch {
+            availableWorkspacesDescription = "Not loaded"
             lastErrorMessage = error.localizedDescription
         }
     }
