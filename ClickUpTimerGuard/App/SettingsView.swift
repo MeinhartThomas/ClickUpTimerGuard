@@ -54,6 +54,38 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
                     .padding(.leading, 192)
             }
+            
+            Divider()
+                .padding(.vertical, 8)
+                
+            row("Updates") {
+                VStack(alignment: .leading, spacing: 8) {
+                    let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+                    Text("Current Version: \(currentVersion)")
+                        .foregroundStyle(.secondary)
+                    
+                    HStack {
+                        Button("Check for Updates") {
+                            Task {
+                                await controller.updater.checkForUpdates()
+                            }
+                        }
+                        
+                        if controller.updater.hasUpdate {
+                            Button("Download Update") {
+                                controller.updater.openLatestRelease()
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    
+                    if !controller.updater.updateStatus.isEmpty {
+                        Text(controller.updater.updateStatus)
+                            .font(.caption)
+                            .foregroundStyle(controller.updater.hasUpdate ? .green : .secondary)
+                    }
+                }
+            }
         }
         .onAppear {
             controller.refreshStartAtLoginStatus()

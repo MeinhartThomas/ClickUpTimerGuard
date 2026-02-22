@@ -20,6 +20,7 @@ final class GuardController: ObservableObject {
     @Published var startAtLoginErrorMessage: String?
 
     let settings: AppSettings
+    let updater: AppUpdater
 
     private let activityMonitor: ActivityMonitoring
     private let foregroundAppMonitor: ForegroundAppMonitoring
@@ -35,6 +36,7 @@ final class GuardController: ObservableObject {
 
     init(
         settings: AppSettings = AppSettings(),
+        updater: AppUpdater = AppUpdater(),
         activityMonitor: ActivityMonitoring = ActivityMonitor(),
         foregroundAppMonitor: ForegroundAppMonitoring = ForegroundAppMonitor(),
         clickUpClient: ClickUpAPIClient = ClickUpAPIClient(),
@@ -42,6 +44,7 @@ final class GuardController: ObservableObject {
         reminderEngine: ReminderEngine = ReminderEngine()
     ) {
         self.settings = settings
+        self.updater = updater
         self.activityMonitor = activityMonitor
         self.foregroundAppMonitor = foregroundAppMonitor
         self.clickUpClient = clickUpClient
@@ -57,6 +60,7 @@ final class GuardController: ObservableObject {
         notificationCenter.delegate = notificationPresenter
         Task { await requestNotificationAuthorizationIfNeeded() }
         startScheduler()
+        Task { await updater.checkForUpdates(automatic: true) }
     }
 
     func stop() {
