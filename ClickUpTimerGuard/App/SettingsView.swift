@@ -3,7 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var controller: GuardController
     @ObservedObject var settings: AppSettings
-    @State private var selectedSection: SettingsSection? = .clickUpAPI
+    @State private var selectedSection: SettingsSection? = .general
 
     var body: some View {
         NavigationSplitView {
@@ -15,7 +15,7 @@ struct SettingsView: View {
         } detail: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    switch selectedSection ?? .clickUpAPI {
+                    switch selectedSection ?? .general {
                     case .general:
                         generalSection
                     case .clickUpAPI:
@@ -29,7 +29,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
             }
-            .navigationTitle((selectedSection ?? .clickUpAPI).title)
+            .navigationTitle((selectedSection ?? .general).title)
         }
         .frame(minWidth: 760, minHeight: 720)
     }
