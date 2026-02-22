@@ -78,12 +78,6 @@ struct SettingsView: View {
                             .buttonStyle(.borderedProminent)
                         }
                     }
-                    
-                    if !controller.updater.updateStatus.isEmpty {
-                        Text(controller.updater.updateStatus)
-                            .font(.caption)
-                            .foregroundStyle(controller.updater.hasUpdate ? .green : .secondary)
-                    }
                 }
             }
         }
