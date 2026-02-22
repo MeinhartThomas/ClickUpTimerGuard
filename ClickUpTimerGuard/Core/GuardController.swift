@@ -431,4 +431,34 @@ private final class ForegroundNotificationPresenter: NSObject, UNUserNotificatio
     ) async -> UNNotificationPresentationOptions {
         [.banner, .sound, .list]
     }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let workspace = NSWorkspace.shared
+        
+        let bundleIDs = ["com.clickup.desktop-app", "com.clickup.mac-app"]
+        var appOpened = false
+        
+        for bundleID in bundleIDs {
+            if let url = workspace.urlForApplication(withBundleIdentifier: bundleID) {
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true
+                do {
+                    _ = try await workspace.openApplication(at: url, configuration: configuration)
+                    appOpened = true
+                    break
+                } catch {
+                    print("Error opening ClickUp (Bundle-ID \(bundleID)): \(error)")
+                }
+            }
+        }
+        
+        if !appOpened {
+            if let clickupURL = URL(string: "clickup://") {
+                workspace.open(clickupURL)
+            }
+        }
+    }
 }
