@@ -53,6 +53,8 @@ final class GuardController: ObservableObject {
 
         tokenInput = (try? tokenStore.loadToken()) ?? ""
         startAtLoginEnabled = Self.isStartAtLoginEnabledInSystem()
+
+        Task { start() }
     }
 
     func start() {

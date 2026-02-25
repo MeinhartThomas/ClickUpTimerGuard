@@ -15,12 +15,6 @@ struct ClickUpTimerGuardApp: App {
     var body: some Scene {
         MenuBarExtra("Timer Guard", image: "MenuBarIcon") {
             MenuBarView(controller: controller)
-                .onAppear {
-                    controller.start()
-                }
-                .onDisappear {
-                    controller.stop()
-                }
         }
 
         Window("Settings", id: "settings") {
